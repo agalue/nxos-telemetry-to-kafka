@@ -3,6 +3,11 @@ package org.opennms.features.telemetry.nxos.grpc.server;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.producer.MockProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,7 +38,8 @@ public class Grpc2KafkaTest {
 
     @Test
     public void testServer() throws Exception {
-        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(true));
+        MockProducer<String, byte[]> mockProducer = new MockProducer<>(true, new StringSerializer(), new ByteArraySerializer());
+        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(mockProducer, "test-topic", true));
         gRPCMdtDialoutGrpc.gRPCMdtDialoutStub stub = gRPCMdtDialoutGrpc.newStub(grpcServerRule.getChannel());
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -69,11 +75,15 @@ public class Grpc2KafkaTest {
                 .setReqId(1)
                 .setData(ByteString.copyFrom(telemetry.toByteArray()))
                 .build();
-
         requestObserver.onNext(requestArgs);
         requestObserver.onCompleted();
 
         latch.await(5, TimeUnit.SECONDS);
+
+        Assert.assertEquals(1, mockProducer.history().size());
+        ProducerRecord<String, byte[]> record = mockProducer.history().get(0);
+        Telemetry kafkaPayload = Telemetry.parseFrom(record.value());
+        Assert.assertEquals("agalue", kafkaPayload.getDataGpbkv(0).getStringValue());
     }
 
 }

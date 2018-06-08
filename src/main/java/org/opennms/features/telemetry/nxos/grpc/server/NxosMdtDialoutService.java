@@ -1,7 +1,12 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,9 +27,13 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
 
     private static final Logger LOG = LoggerFactory.getLogger(NxosMdtDialoutService.class);
 
+    private Producer<String, byte[]> kafkaProducer;
+    private String kafkaTopic;
     private boolean gpbDebug = false;
 
-    public NxosMdtDialoutService(boolean gpbDebug) {
+    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, boolean gpbDebug) {
+        this.kafkaProducer = kafkaProducer;
+        this.kafkaTopic = kafkaTopic;
         this.gpbDebug = gpbDebug;
     }
 
@@ -35,6 +44,7 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
             public void onNext(MdtDialoutArgs value) {
                 LOG.info("Receiving request ID {} with {} bytes of data", value.getReqId(), value.getData().size());
                 logMessage(value.getData());
+                sendMessageToKafka(value.getData());
             }
 
             @Override
@@ -61,4 +71,17 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
         }
     }
 
+    private void sendMessageToKafka(ByteString data) {
+        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, data.toByteArray());
+        try {
+            LOG.info("Sending message to Kafka topic {}", kafkaTopic);
+            final Future<RecordMetadata> future = kafkaProducer.send(record);
+            future.get();
+            LOG.info("Message has been sent to Kafka topic {}", kafkaTopic);
+        } catch (InterruptedException e) {
+            LOG.warn("Interrupted while sending message to topic {}.", kafkaTopic, e);
+        } catch (ExecutionException e) {
+            LOG.error("Error occurred while sending message to topic {}.", kafkaTopic, e);
+        }
+    }
 }

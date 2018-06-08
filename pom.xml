@@ -20,6 +20,7 @@
     <properties>
         <protocVersion>3.5.1-1</protocVersion>
         <grpcVersion>1.12.0</grpcVersion>
+        <kafkaVersion>1.1.0</kafkaVersion>
     </properties>
     <build>
         <extensions>
@@ -101,6 +102,11 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
             <version>${grpcVersion}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafkaVersion}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
