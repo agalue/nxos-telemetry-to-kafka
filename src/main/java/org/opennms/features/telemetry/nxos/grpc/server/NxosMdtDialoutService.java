@@ -1,22 +1,20 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import java.nio.file.StandardOpenOption;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.stub.StreamObserver;
+import mdt_dialout.MdtDialout.MdtDialoutArgs;
+import mdt_dialout.gRPCMdtDialoutGrpc;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import io.grpc.stub.StreamObserver;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
 import telemetry.TelemetryBis.Telemetry;
+
+import java.nio.file.StandardOpenOption;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 /**
  * The Class NxosMdtDialoutService.
@@ -25,18 +23,34 @@ import telemetry.TelemetryBis.Telemetry;
  */
 public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImplBase {
 
+    /** The Constant LOG. */
     private static final Logger LOG = LoggerFactory.getLogger(NxosMdtDialoutService.class);
 
+    /** The Kafka producer. */
     private Producer<String, byte[]> kafkaProducer;
+
+    /** The Kafka topic. */
     private String kafkaTopic;
+
+    /** The GPB debug flag. */
     private boolean gpbDebug = false;
 
+    /**
+     * Instantiates a new NX-OS Telemetry mdt-dialout service.
+     *
+     * @param kafkaProducer the Kafka producer
+     * @param kafkaTopic the Kafka topic
+     * @param gpbDebug the GPB debug flag
+     */
     public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, boolean gpbDebug) {
         this.kafkaProducer = kafkaProducer;
         this.kafkaTopic = kafkaTopic;
         this.gpbDebug = gpbDebug;
     }
 
+    /* (non-Javadoc)
+     * @see mdt_dialout.gRPCMdtDialoutGrpc.gRPCMdtDialoutImplBase#mdtDialout(io.grpc.stub.StreamObserver)
+     */
     @Override
     public StreamObserver<MdtDialoutArgs> mdtDialout(StreamObserver<MdtDialoutArgs> responseObserver) {
         return new StreamObserver<MdtDialoutArgs>() {
@@ -61,6 +75,11 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
         };
     }
 
+    /**
+     * Log message.
+     *
+     * @param data the data in bytes
+     */
     private void logMessage(ByteString data) {
         if (!gpbDebug) return;
         try {
@@ -71,6 +90,11 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
         }
     }
 
+    /**
+     * Send message to Kafka.
+     *
+     * @param data the data in bytes
+     */
     private void sendMessageToKafka(ByteString data) {
         final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, data.toByteArray());
         try {

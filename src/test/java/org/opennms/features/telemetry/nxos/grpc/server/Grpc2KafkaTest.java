@@ -1,8 +1,10 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
+import com.google.protobuf.ByteString;
+import io.grpc.stub.StreamObserver;
+import io.grpc.testing.GrpcServerRule;
+import mdt_dialout.MdtDialout.MdtDialoutArgs;
+import mdt_dialout.gRPCMdtDialoutGrpc;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -14,28 +16,32 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.protobuf.ByteString;
-
-import io.grpc.stub.StreamObserver;
-import io.grpc.testing.GrpcServerRule;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
 import telemetry.TelemetryBis.Telemetry;
 import telemetry.TelemetryBis.TelemetryField;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 /**
- * The Test Class for Grpc2Kafka
- * 
+ * The Test Class for Grpc2Kafka.
+ *
  * @author <a href="mailto:agalue@opennms.org">Alejandro Galue</a>
  */
 @RunWith(JUnit4.class)
 public class Grpc2KafkaTest {
+
+    /** The Constant LOG. */
     private static final Logger LOG = LoggerFactory.getLogger(Grpc2KafkaTest.class);
 
+    /** The gRPC server rule. */
     @Rule
     public final GrpcServerRule grpcServerRule = new GrpcServerRule().directExecutor();
 
+    /**
+     * Test the gRPC server with Kafka.
+     *
+     * @throws Exception the exception
+     */
     @Test
     public void testServer() throws Exception {
         MockProducer<String, byte[]> mockProducer = new MockProducer<>(true, new StringSerializer(), new ByteArraySerializer());
