@@ -1,17 +1,25 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import io.grpc.Server;
-import io.grpc.ServerBuilder;
-import org.apache.commons.cli.*;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
 
 /**
  * The Class Grpc2Kafka.
@@ -25,12 +33,12 @@ public class Grpc2Kafka {
 
     /** The Constant DEFAULT_GRPC_PORT. */
     public static final int DEFAULT_GRPC_PORT = 50051;
-    
+
     /** The Constant DEFAULT_KAFKA_BOOTSTRAP. */
     public static final String DEFAULT_KAFKA_BOOTSTRAP = "127.0.0.1:9092";
-    
+
     /** The Constant DEFAULT_KAFKA_TOPIC. */
-    public static final String DEFAULT_KAFKA_TOPIC = "nxos-telemetry-grpc";
+    public static final String DEFAULT_KAFKA_TOPIC = "OpenNMS.Sink.Telemetry-NXOS";
 
     /**
      * The main method.
@@ -44,6 +52,8 @@ public class Grpc2Kafka {
                 .addOption("p", "port", true, "gRPC server listener port.\nDefault: " + DEFAULT_GRPC_PORT)
                 .addOption("b", "bootstrap-servers", true, "Kafka bootstrap server list.\nDefault: " + DEFAULT_KAFKA_BOOTSTRAP)
                 .addOption("t", "topic", true, "Kafka destination topic name.\nDefault: " + DEFAULT_KAFKA_TOPIC)
+                .addOption("m", "minion-id", true, "OpenNMS Minion ID.")
+                .addOption("l", "minion-location", true, "OpenNMS Minion Location.")
                 .addOption("d", "debug", false, "Show message on logs.")
                 .addOption("h", "help", false, "Show this help.");
 
@@ -62,12 +72,24 @@ public class Grpc2Kafka {
             System.exit(1);
         }
 
+        if (!cli.hasOption('l')) {
+            System.err.println("ERROR: OpenNMS Minion Location is required.");
+            printHelp(options);
+            System.exit(0);
+        }
+
+        if (!cli.hasOption('m')) {
+            System.err.println("ERROR: OpenNMS Minion ID is required.");
+            printHelp(options);
+            System.exit(0);
+        }
+
         String kafkaServers = cli.hasOption('b') ? cli.getOptionValue('b') : DEFAULT_KAFKA_BOOTSTRAP;
         String kafkaTopic = cli.hasOption('t') ? cli.getOptionValue('t') : DEFAULT_KAFKA_TOPIC;
         Integer serverPort = cli.hasOption('p') ? new Integer(cli.getOptionValue('p')) : DEFAULT_GRPC_PORT;
 
         KafkaProducer<String, byte[]> producer = buildProducer(kafkaServers);
-        Server server = buildServer(serverPort, producer, kafkaTopic, cli.hasOption('d'));
+        Server server = buildServer(serverPort, producer, kafkaTopic, cli.getOptionValue('m'), cli.getOptionValue('l'), cli.hasOption('d'));
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -83,7 +105,7 @@ public class Grpc2Kafka {
     /**
      * Prints the help.
      *
-     * @param options the CLI options
+     * @param options the options
      */
     private static void printHelp(Options options) {
         HelpFormatter formatter = new HelpFormatter();
@@ -91,9 +113,9 @@ public class Grpc2Kafka {
     }
 
     /**
-     * Builds the producer.
+     * Builds the Kafka producer.
      *
-     * @param kafkaServers the Kafka bootstrap servers string
+     * @param kafkaServers the Kafka servers bootstrap string
      * @return the Kafka producer
      */
     public static KafkaProducer<String, byte[]> buildProducer(final String kafkaServers) {
@@ -114,13 +136,21 @@ public class Grpc2Kafka {
      * @param serverPort the server port
      * @param producer the Kafka producer
      * @param kafkaTopic the Kafka topic
+     * @param minionId the OpenNMS Minion id
+     * @param minionLocation the OpenNMS Minion location
      * @param debug the debug flag
      * @return the gRPC server
      */
-    public static Server buildServer(final int serverPort, final KafkaProducer<String, byte[]> producer, final String kafkaTopic, final boolean debug) {
+    public static Server buildServer(final int serverPort, final KafkaProducer<String, byte[]> producer, final String kafkaTopic, final String minionId, final String minionLocation, final boolean debug) {
         LOG.info("Starting NX-OS gRPC server without TLS on port {}...", serverPort);
+        String ipAddress = "127.0.0.1";
+        try {
+            ipAddress = InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            LOG.warn("Cannot get host address because: ", e.getMessage());
+        }
         return ServerBuilder.forPort(serverPort)
-                .addService(new NxosMdtDialoutService(producer, kafkaTopic, debug))
+                .addService(new NxosMdtDialoutService(producer, kafkaTopic, minionId, minionLocation, ipAddress, serverPort, debug))
                 .build();
     }
 

@@ -1,10 +1,8 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import com.google.protobuf.ByteString;
-import io.grpc.stub.StreamObserver;
-import io.grpc.testing.GrpcServerRule;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -14,13 +12,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.opennms.netmgt.telemetry.ipc.TelemetryProtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.ByteString;
+
+import io.grpc.stub.StreamObserver;
+import io.grpc.testing.GrpcServerRule;
+import mdt_dialout.MdtDialout.MdtDialoutArgs;
+import mdt_dialout.gRPCMdtDialoutGrpc;
 import telemetry.TelemetryBis.Telemetry;
 import telemetry.TelemetryBis.TelemetryField;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * The Test Class for Grpc2Kafka.
@@ -38,14 +41,14 @@ public class Grpc2KafkaTest {
     public final GrpcServerRule grpcServerRule = new GrpcServerRule().directExecutor();
 
     /**
-     * Test the gRPC server with Kafka.
+     * Test gRPC server with Kafka using OpenNMS Minion Metadata.
      *
      * @throws Exception the exception
      */
     @Test
     public void testServer() throws Exception {
         MockProducer<String, byte[]> mockProducer = new MockProducer<>(true, new StringSerializer(), new ByteArraySerializer());
-        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(mockProducer, "test-topic", true));
+        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(mockProducer, "test-topic", "0000", "JUnit", "127.0.0.1", Grpc2Kafka.DEFAULT_GRPC_PORT, true));
         gRPCMdtDialoutGrpc.gRPCMdtDialoutStub stub = gRPCMdtDialoutGrpc.newStub(grpcServerRule.getChannel());
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -88,7 +91,8 @@ public class Grpc2KafkaTest {
 
         Assert.assertEquals(1, mockProducer.history().size());
         ProducerRecord<String, byte[]> record = mockProducer.history().get(0);
-        Telemetry kafkaPayload = Telemetry.parseFrom(record.value());
+        TelemetryProtos.TelemetryMessageLog log = TelemetryProtos.TelemetryMessageLog.parseFrom(record.value());
+        Telemetry kafkaPayload = Telemetry.parseFrom(log.getMessage(0).getBytes());
         Assert.assertEquals("agalue", kafkaPayload.getDataGpbkv(0).getStringValue());
     }
 

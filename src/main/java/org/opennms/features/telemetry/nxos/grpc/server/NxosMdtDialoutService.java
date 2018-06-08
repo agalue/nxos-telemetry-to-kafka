@@ -1,20 +1,23 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-import io.grpc.stub.StreamObserver;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import telemetry.TelemetryBis.Telemetry;
-
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.opennms.netmgt.telemetry.ipc.TelemetryProtos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import io.grpc.stub.StreamObserver;
+import mdt_dialout.MdtDialout.MdtDialoutArgs;
+import mdt_dialout.gRPCMdtDialoutGrpc;
+import telemetry.TelemetryBis.Telemetry;
 
 /**
  * The Class NxosMdtDialoutService.
@@ -32,6 +35,18 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
     /** The Kafka topic. */
     private String kafkaTopic;
 
+    /** The OpenNMS Minion id. */
+    private String minionId;
+
+    /** The OpenNMS Minion location. */
+    private String minionLocation;
+
+    /** The OpenNMS Minion address. */
+    private String minionAddress;
+
+    /** The listener port. */
+    private int listenerPort;
+
     /** The GPB debug flag. */
     private boolean gpbDebug = false;
 
@@ -40,11 +55,19 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
      *
      * @param kafkaProducer the Kafka producer
      * @param kafkaTopic the Kafka topic
-     * @param gpbDebug the GPB debug flag
+     * @param minionId the OpenNMS Minion id
+     * @param minionLocation the OpenNMS Minion location
+     * @param minionAddress the OpenNMS Minion address
+     * @param listenerPort the listener port
+     * @param gpbDebug the GBP debug flag
      */
-    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, boolean gpbDebug) {
+    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, String minionId, String minionLocation, String minionAddress, int listenerPort, boolean gpbDebug) {
         this.kafkaProducer = kafkaProducer;
         this.kafkaTopic = kafkaTopic;
+        this.minionId = minionId;
+        this.minionLocation = minionLocation;
+        this.minionAddress = minionAddress;
+        this.listenerPort = listenerPort;
         this.gpbDebug = gpbDebug;
     }
 
@@ -96,7 +119,18 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
      * @param data the data in bytes
      */
     private void sendMessageToKafka(ByteString data) {
-        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, data.toByteArray());
+        TelemetryProtos.TelemetryMessage message = TelemetryProtos.TelemetryMessage.newBuilder()
+                .setBytes(data)
+                .setTimestamp(System.currentTimeMillis())
+                .build();
+        TelemetryProtos.TelemetryMessageLog log = TelemetryProtos.TelemetryMessageLog.newBuilder()
+                .setSystemId(minionId)
+                .setLocation(minionLocation)
+                .setSourceAddress(minionAddress)
+                .setSourcePort(listenerPort)
+                .addMessage(message)
+                .build();
+        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, log.toByteArray());
         try {
             LOG.info("Sending message to Kafka topic {}", kafkaTopic);
             final Future<RecordMetadata> future = kafkaProducer.send(record);
@@ -108,4 +142,5 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
             LOG.error("Error occurred while sending message to topic {}.", kafkaTopic, e);
         }
     }
+
 }
