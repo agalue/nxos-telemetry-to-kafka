@@ -3,6 +3,9 @@
 .project
 .settings
 
+# Idea
+.idea
+
 # Compiled class file
 *.class
 

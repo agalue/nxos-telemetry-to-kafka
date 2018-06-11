@@ -1,12 +1,12 @@
 # nxos-telemetry-to-kafka
 
-The idea of this project is to implement a gRPC server in order to stream telemetry statistics from a [Cisco Nexus](https://www.cisco.com/go/nexus) device, and then send these statistics to a topic in [Kafka](http://kafka.apache.org/).
+The idea of this project is to implement a [gRPC](https://grpc.io/) server in order to stream telemetry statistics from a [Cisco Nexus](https://www.cisco.com/go/nexus) device, and then send these statistics to a topic in [Kafka](http://kafka.apache.org/).
 
 The gRPC service definition for the Nexus devices is defined [here](https://github.com/CiscoDevNet/nx-telemetry-proto).
 
-Even if the gRPC gRPCMdtDialout  service is defined as bi-directional, this application focus only on the client streaming part; in other words, receiving data from the Nexus switch.
+Even if the gRPC `gRPCMdtDialout` service is defined as bi-directional, this application focus only on the client streaming part; in other words, receiving data from the Nexus switch.
 
-Using UDP is another way to obtain telemetry data from Cisco, but due to the physical size limitation of UDP (65,507 bytes according to [Wikipedia](https://en.wikipedia.org/wiki/User_Datagram_Protocol)), it it not possible to send large groups of telemetry data through UDP, due to the hierarchical structure of the "NX-API or DMI sources" and the potential amount of resources involved on big switches. This is due to the fact that each UDP packet is independent of each other (it is self contained), and the switch won't split the data into multiple packets.
+Using UDP is another way to obtain telemetry data from Cisco, but due to the physical size limitation of UDP (65,507 bytes according to [Wikipedia](https://en.wikipedia.org/wiki/User_Datagram_Protocol)), it it not possible to send large groups of telemetry data through UDP, due to the hierarchical structure of the "NX-API or DME sources" and the potential amount of resources involved on big switches. This is due to the fact that each UDP packet is independent of each other (it is self contained), and the switch won't split the data into multiple packets.
 
 These limitations force the administrator of the switch to define hundreds if not thousands of sensor path entries on the telemetry configuration to guarantee that the amount of data fits the UDP packet.
 
@@ -15,7 +15,7 @@ For example,
 ```
 telemetry
   destination-group 100
-    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB 
+    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB
   sensor-group 200
     path sys/intf/phys-[eth1/1]/dbgIfHCIn depth 0
     path sys/intf/phys-[eth1/1]/dbgIfHCOut depth 0
@@ -38,7 +38,7 @@ For example,
 ```
 telemetry
   destination-group 100
-    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB 
+    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB
   sensor-group 200
 	  path sys/intf depth unbounded
   subscription 300
@@ -52,13 +52,13 @@ As there are 2 possible encoding protocols (GPB or JSON), when printing the data
 
 # OpenNMS
 
-Starting with Horizon 22, OpenNMS support streaming telemetry from NX-OS devices over UDP using GPB only. When using Minions, it is possible to put Kafka in the middle of the communication.
+Starting with Horizon 22, OpenNMS supports streaming telemetry from NX-OS devices over UDP using GPB only. When using Minions, it is possible to put Kafka in the middle of the communication.
 
 Due to the complexity associated with Java dependencies on a stand-alone JVM and inside an OSGi container (which is what Minion uses), this application has been modified from its the original implementation, in order to send the data to Kafka in the same way on which an OpenNMS Minion would do it.
 
-In other words, this application is basically bypassing the Minion by doing exactly what it should do to put telemetry data on Kafka. In order to do this, the data obtained from the Nexus device (which has to be in GPB, as OpenNMS doesn’t support JSON) should be wrapped into another GPB packet designed for processing Telemetry through the Sink pattern. The definition of this file is included here (telemetry.proto), and it was re-compiled to avoid depending on the OpenNMS JARs (as a proto file is the contract between GPB/gRPC applications).
+In other words, this application is basically bypassing the Minion by doing exactly what it should do to put telemetry data on Kafka. In order to do this, the data obtained from the Nexus device (which has to be in GPB, as OpenNMS doesn’t support JSON) should be wrapped into another GPB packet designed for processing Telemetry through the Sink pattern. The definition of this file is included in this project, obtained from [here](https://github.com/OpenNMS/opennms/blob/master/features/telemetry/common/src/main/resources/telemetry.proto), and compiled locally to avoid depending on the OpenNMS JARs (as a proto file is the contract between gRPC/GPB applications).
 
-As a side note, `telemetry.proto` file is not compliant with the protocol definition, as it is mandatory to specify the version. The following is being assumed:
+As a side note, the `telemetry.proto` doesn't have the `syntax` statement that specifies which version of Protobuf is expected to be used with this file. This particular file, based on the used syntax should use:
 
 ```
 syntax="proto2"
@@ -87,12 +87,26 @@ Here are some facts to keep in mind, when trying to do it:
 * All gRPC dependencies, except for Guava, Probuf and Gson are non-OSGi bundles.
 * grpc-netty-shaded is required to avoid conflicts with the Netty version used by OpenNMS. Also, this is the version to use when TLS/SSL is required (at least for 1.12.0).
 * OpenNMS H22 uses Netty 4.1.9.Final while grpc-netty relies on 4.1.22.Final
+* Package export issues between grpc-core and grpc-context: https://github.com/grpc/grpc-java/issues/2727
 
 During preliminary experiments, the gRPC listener was running within OpenNMS, after replacing Guava and Protobuf with their respective latest versions. Unfortunately, due to how Karaf/OSGi handle dependencies I was not able to have it running within a Minion.
 
+Here is what the issue 2727 shows, and how that ends into a package conflicts:
+
+```
+karaf@root()> package:exports | grep grpc-context
+io.grpc                                                                            │ 0.0.0       │ 71 │ wrap_mvn_io.grpc_grpc-context_1.12.0
+
+karaf@root()> package:exports | grep grpc-core
+io.grpc.inprocess                                                                  │ 0.0.0       │ 72 │ wrap_mvn_io.grpc_grpc-core_1.12.0
+io.grpc.internal                                                                   │ 0.0.0       │ 72 │ wrap_mvn_io.grpc_grpc-core_1.12.0
+io.grpc.util                                                                       │ 0.0.0       │ 72 │ wrap_mvn_io.grpc_grpc-core_1.12.0
+io.grpc
+```
+
 This application is ready to use and can be used in conjunction with the Minion to provide the missing capabilities to OpenNMS.
 
-Now, handling the generated GPB object that Cisco produces is unfortunately not easy. OpenNMS provides a helper class called NxosGpbParserUtil, used when writing the required Groovy script to convert the telemetry data into a CollectionSet.
+Now, handling the generated GPB object that Cisco produces is unfortunately not easy. OpenNMS provides a helper class called `NxosGpbParserUtil`, used when writing the required `Groovy` script to convert the telemetry data into a `CollectionSet`.
 
 This helper class was designed on such way that it simplify the life of the developer when using UDP as the transport protocol on the Nexus Switch. Unfortunately, when sending larger metric sets using gRPC, the structure is a little bit different, and the current status of the helper class requires some tuning. Fortunately, the missing methods can be added on the Groovy script (see the content of the opennms directory, for an example).
 
@@ -133,4 +147,3 @@ usage: grpc2kafka
 ```
 
 It is recommended to run this application on the same machine where the OpenNMS Minion is running, and make sure to provide the appropriate settings. It is important that the Minion is using Kafka for the Sink pattern in order to have this solution working.
-                                
