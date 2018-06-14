@@ -1,12 +1,12 @@
 # nxos-telemetry-to-kafka
 
-The idea of this project is to implement a gRPC server in order to stream telemetry statistics from a [Cisco Nexus](https://www.cisco.com/go/nexus) device, and then send these statistics to a topic in [Kafka](http://kafka.apache.org/).
+The idea of this project is to implement a [gRPC](https://grpc.io/) server in order to stream telemetry statistics from a [Cisco Nexus](https://www.cisco.com/go/nexus) device, and then send these statistics to a topic in [Kafka](http://kafka.apache.org/).
 
 The gRPC service definition for the Nexus devices is defined [here](https://github.com/CiscoDevNet/nx-telemetry-proto).
 
-Even if the gRPC gRPCMdtDialout  service is defined as bi-directional, this application focus only on the client streaming part; in other words, receiving data from the Nexus switch.
+Even if the gRPC `gRPCMdtDialout` service is defined as bi-directional, this application focus only on the client streaming part; in other words, receiving data from the Nexus switch.
 
-Using UDP is another way to obtain telemetry data from Cisco, but due to the physical size limitation of UDP (65,507 bytes according to [Wikipedia](https://en.wikipedia.org/wiki/User_Datagram_Protocol)), it it not possible to send large groups of telemetry data through UDP, due to the hierarchical structure of the "NX-API or DMI sources" and the potential amount of resources involved on big switches. This is due to the fact that each UDP packet is independent of each other (it is self contained), and the switch won't split the data into multiple packets.
+Using UDP is another way to obtain telemetry data from Cisco, but due to the physical size limitation of UDP (65,507 bytes according to [Wikipedia](https://en.wikipedia.org/wiki/User_Datagram_Protocol)), it it not possible to send large groups of telemetry data through UDP, due to the hierarchical structure of the data (obtained through `NX-API`, or data management engine `DME`), and the potential amount of resources involved on big switches. This is due to the fact that each UDP packet is independent of each other (it is self contained), and the switch won't split the data into multiple packets.
 
 These limitations force the administrator of the switch to define hundreds if not thousands of sensor path entries on the telemetry configuration to guarantee that the amount of data fits the UDP packet.
 
@@ -15,7 +15,7 @@ For example,
 ```
 telemetry
   destination-group 100
-    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB 
+    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB
   sensor-group 200
     path sys/intf/phys-[eth1/1]/dbgIfHCIn depth 0
     path sys/intf/phys-[eth1/1]/dbgIfHCOut depth 0
@@ -38,9 +38,9 @@ For example,
 ```
 telemetry
   destination-group 100
-    ip address 192.168.0.253 port 50001 protocol UDP encoding GPB 
+    ip address 192.168.0.253 port 50001 protocol gRPC encoding GPB
   sensor-group 200
-	  path sys/intf depth unbounded
+    path sys/intf depth unbounded
   subscription 300
     dst-grp 100
     snsr-grp 200 sample-interval 300000
