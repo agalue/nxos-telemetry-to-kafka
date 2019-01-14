@@ -17,39 +17,39 @@
  * See the License for the specific language governing permissions and         
  * limitations under the License.                                              
  * ----------------------------------------------------------------------------
- */
+ */                                                                            
 
 syntax = "proto3";
 
-package telemetry;
-
 option go_package = "telemetry_bis";
+option java_package = "com.cisco.nxos.telemetry";
+option java_multiple_files = true;
 
 /*
  * Common message used as a header to both compact and self-describing
  * telemetry messages.                                                
- */
+ */                                                                   
 
 message Telemetry {
-    oneof node_id {
-        string node_id_str = 1;
-        //  bytes node_id_uuid = 2;              // not produced
-    }
-    oneof subscription {
-        string subscription_id_str = 3;
-        //  uint32   subscription_id = 4;        // not produced
-    }
-    // string   sensor_path = 5;               // not produced
-    string encoding_path = 6;
-    // string   model_version = 7;             // not produced
-    uint64 collection_id = 8;
-    uint64 collection_start_time = 9;
-    uint64 msg_timestamp = 10;
-    repeated TelemetryField data_gpbkv = 11;
-    TelemetryGPBTable data_gpb = 12;
-    uint64 collection_end_time = 13;
-    // uint64   heartbeat_sequence_number = 14; // not produced
-}
+  oneof node_id {  
+    string node_id_str = 1;
+    //  bytes node_id_uuid = 2;              // not produced
+  }                                                         
+  oneof subscription {                                      
+    string   subscription_id_str = 3;                       
+    //  uint32   subscription_id = 4;        // not produced
+  }                                                         
+  // string   sensor_path = 5;               // not produced
+  string   encoding_path = 6;                               
+  // string   model_version = 7;             // not produced
+  uint64   collection_id = 8;                               
+  uint64   collection_start_time = 9;                       
+  uint64   msg_timestamp = 10;                              
+  repeated TelemetryField data_gpbkv = 11;                  
+  TelemetryGPBTable data_gpb = 12;                          
+  uint64   collection_end_time = 13;                        
+  // uint64   heartbeat_sequence_number = 14; // not produced
+}                                                            
 
 /*
  * Messages used to export content in GPB K/V form.
@@ -59,20 +59,20 @@ message Telemetry {
  */
 
 message TelemetryField {
-    uint64 timestamp = 1;
-    string name = 2;
-    oneof value_by_type {
-        bytes bytes_value = 4;
-        string string_value = 5;
-        bool bool_value = 6;
-        uint32 uint32_value = 7;
-        uint64 uint64_value = 8;
-        sint32 sint32_value = 9;
-        sint64 sint64_value = 10;
-        double double_value = 11;
-        float float_value = 12;
-    }
-    repeated TelemetryField fields = 15;
+  uint64         timestamp = 1;
+  string         name = 2;
+  oneof value_by_type {
+    bytes          bytes_value = 4;
+    string         string_value = 5;
+    bool           bool_value = 6;
+    uint32         uint32_value = 7;
+    uint64         uint64_value = 8;
+    sint32         sint32_value = 9;
+    sint64         sint64_value = 10;
+    double         double_value = 11;
+    float          float_value = 12;
+  }
+  repeated TelemetryField fields = 15;
 }
 
 /*
@@ -83,11 +83,11 @@ message TelemetryField {
  */
 
 message TelemetryGPBTable {
-    repeated TelemetryRowGPB row = 1;
+  repeated TelemetryRowGPB row = 1;
 }
 
 message TelemetryRowGPB {
-    uint64 timestamp = 1;
-    bytes keys = 10;
-    bytes content = 11;
+   uint64 timestamp = 1;
+   bytes keys = 10;
+   bytes content = 11;
 }

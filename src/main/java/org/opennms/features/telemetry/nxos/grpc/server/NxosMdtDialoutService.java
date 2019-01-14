@@ -1,6 +1,5 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -15,9 +14,9 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.grpc.stub.StreamObserver;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
-import telemetry.TelemetryBis.Telemetry;
+import com.cisco.nxos.telemetry.MdtDialoutArgs;
+import com.cisco.nxos.telemetry.Telemetry;
+import com.cisco.nxos.telemetry.gRPCMdtDialoutGrpc;
 
 /**
  * The Class NxosMdtDialoutService.

@@ -20,10 +20,10 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcServerRule;
-import mdt_dialout.MdtDialout.MdtDialoutArgs;
-import mdt_dialout.gRPCMdtDialoutGrpc;
-import telemetry.TelemetryBis.Telemetry;
-import telemetry.TelemetryBis.TelemetryField;
+import com.cisco.nxos.telemetry.MdtDialoutArgs;
+import com.cisco.nxos.telemetry.gRPCMdtDialoutGrpc;
+import com.cisco.nxos.telemetry.Telemetry;
+import com.cisco.nxos.telemetry.TelemetryField;
 
 /**
  * The Test Class for Grpc2Kafka.
