@@ -18,9 +18,9 @@
         </developer>
     </developers>
     <properties>
-        <protocVersion>3.5.1-1</protocVersion>
-        <grpcVersion>1.12.0</grpcVersion>
-        <kafkaVersion>1.1.0</kafkaVersion>
+        <protocVersion>3.6.1</protocVersion>
+        <grpcVersion>1.17.1</grpcVersion>
+        <kafkaVersion>2.1.0</kafkaVersion>
     </properties>
     <build>
         <extensions>
@@ -43,7 +43,7 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.5.1</version>
+                <version>0.6.1</version>
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protocVersion}:exe:${os.detected.classifier}</protocArtifact>
                     <pluginId>grpc-java</pluginId>
@@ -59,25 +59,29 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.dstovall</groupId>
-                <artifactId>onejar-maven-plugin</artifactId>
-                <version>1.4.4</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>org.opennms.features.telemetry.nxos.grpc.server.Grpc2Kafka</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
                 <executions>
                     <execution>
-                        <configuration>
-                            <onejarVersion>0.96</onejarVersion>
-                            <attachToBuild>true</attachToBuild>
-                        </configuration>
+                        <id>assemble-all</id>
                         <phase>package</phase>
                         <goals>
-                            <goal>one-jar</goal>
+                            <goal>single</goal>
                         </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <filename>${project.artifactId}-${project.version}-onejar.jar</filename>
-                    <mainClass>org.opennms.features.telemetry.nxos.grpc.server.Grpc2Kafka</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -127,10 +131,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-    <pluginRepositories>
-        <pluginRepository>
-            <id>onejar-maven-plugin.googlecode.com</id>
-            <url>http://maven.opennms.org/content/repositories/onejar-maven-plugin.googlecode.com/</url>
-        </pluginRepository>
-    </pluginRepositories>
 </project>
