@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opennms-nxos-grpc
+  namespace: opennms
+  labels:
+    app: opennms-nxos-grpc
+    deployment: drift
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opennms-nxos-grpc
+  template:
+    metadata:
+      labels:
+        app: opennms-nxos-grpc
+        deployment: drift
+    spec:
+      containers:
+      - name: minion # To emulate minions, perhaps this can be deployed with Minions as a second container
+        image: agalue/opennms-nxos-grpc:latest
+        env:
+          - name: BOOTSTRAP_SERVERS
+            value: kafka.opennms.svc.cluster.local:9092
+          - name: MINION_LOCATION
+            value: AWS
+          - name: MINION_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: PORT
+            value: '50001'
+          - name: TOPIC
+            value: OpenNMS.Sink.Telemetry-NXOS
