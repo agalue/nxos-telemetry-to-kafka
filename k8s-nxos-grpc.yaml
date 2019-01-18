@@ -33,3 +33,6 @@ spec:
             value: '50001'
           - name: TOPIC
             value: OpenNMS.Sink.Telemetry-NXOS
+        ports:
+        - containerPort: 50002
+          name: nxos-grpc
