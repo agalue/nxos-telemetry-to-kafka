@@ -76,7 +76,9 @@ This project can serve as a reference in order to formally implement the Listene
 
 # Integration Challenges
 
-Here are some facts to keep in mind, when trying to do it:
+Here are some facts that were discovered while trying to run gRPC within an Karaf (the OSGi container embedded in OpenNMS).
+
+> NOTE: The following is based on latest release of Horizon 22, and the available gRPC version at the moment the analysis was done. The situation haven't changed on newer versions of OpenNMS and gRPC (only the versions might look different).
 
 * OpenNMS H22 depends on Protobuf 2, but gRPC 1.12.0 depends on Protobuf 3 (Minions only loads Protobuf 2 within Karaf)
 * Protobuf 3.5.1 depends on Guava 19, but gRPC 1.12.0 depends on Guava 20 (none of these versions of Guava are present in OpenNMS)
@@ -89,9 +91,9 @@ Here are some facts to keep in mind, when trying to do it:
 * OpenNMS H22 uses Netty 4.1.9.Final while grpc-netty relies on 4.1.22.Final
 * Package export issues between grpc-core and grpc-context: https://github.com/grpc/grpc-java/issues/2727
 
-During preliminary experiments, the gRPC listener was running within OpenNMS, after replacing Guava and Protobuf with their respective latest versions. Unfortunately, due to how Karaf/OSGi handle dependencies I was not able to have it running within a Minion.
+During preliminary experiments, the gRPC listener was running within OpenNMS, after replacing Guava and Protobuf with their respective latest versions. Unfortunately, due to how Karaf/OSGi handle dependencies it was not possible to have it running within a Minion.
 
-Here is what the issue 2727 shows, and how that ends into a package conflicts:
+Here is how the issue [2727](https://github.com/grpc/grpc-java/issues/2727) appared during the tests, and how that ends into a package conflicts:
 
 ```
 karaf@root()> package:exports | grep grpc-context
@@ -104,11 +106,11 @@ io.grpc.util                                                                    
 io.grpc
 ```
 
-This application is ready to use and can be used in conjunction with the Minion to provide the missing capabilities to OpenNMS.
+This is why this application exist, it is ready to use, and can be used in conjunction with the Minion to provide the missing capabilities to OpenNMS.
 
-Now, handling the generated GPB object that Cisco produces is unfortunately not easy. OpenNMS provides a helper class called `NxosGpbParserUtil`, used when writing the required `Groovy` script to convert the telemetry data into a `CollectionSet`.
+That said, handling the generated GPB object that Cisco produces is unfortunately not easy. OpenNMS provides a helper class called `NxosGpbParserUtil`, that can be used when writing the required `Groovy` script to convert the telemetry data into a `CollectionSet`.
 
-This helper class was designed on such way that it simplify the life of the developer when using UDP as the transport protocol on the Nexus Switch. Unfortunately, when sending larger metric sets using gRPC, the structure is a little bit different, and the current status of the helper class requires some tuning. Fortunately, the missing methods can be added on the Groovy script (see the content of the opennms directory, for an example).
+This helper class was designed on such way that it simplify the life of the developer when using UDP as the transport protocol on the Nexus Switch. Unfortunately, when sending larger metric sets using gRPC, the content structure is different, and the current status of the helper class requires some tuning. Fortunately, the missing methods can be added on the Groovy script (see the content of the opennms directory, for an example).
 
 # Requirements
 
