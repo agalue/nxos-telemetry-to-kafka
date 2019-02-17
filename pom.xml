@@ -19,7 +19,7 @@
     </developers>
     <properties>
         <protocVersion>3.6.1</protocVersion>
-        <grpcVersion>1.17.1</grpcVersion>
+        <grpcVersion>1.18.0</grpcVersion>
         <kafkaVersion>2.1.0</kafkaVersion>
     </properties>
     <build>
@@ -116,6 +116,11 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
             <version>2.11.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>4.0.2</version>
         </dependency>
         <!-- Test -->
         <dependency>

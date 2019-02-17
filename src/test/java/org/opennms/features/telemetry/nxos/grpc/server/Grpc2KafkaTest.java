@@ -3,6 +3,7 @@ package org.opennms.features.telemetry.nxos.grpc.server;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -47,8 +48,10 @@ public class Grpc2KafkaTest {
      */
     @Test
     public void testServer() throws Exception {
+        final MetricRegistry metrics = new MetricRegistry();
+
         MockProducer<String, byte[]> mockProducer = new MockProducer<>(true, new StringSerializer(), new ByteArraySerializer());
-        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(mockProducer, "test-topic", "0000", "JUnit", "127.0.0.1", Grpc2Kafka.DEFAULT_GRPC_PORT, true));
+        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(metrics, mockProducer, "test-topic", "0000", "JUnit", "127.0.0.1", Grpc2Kafka.DEFAULT_GRPC_PORT, true));
         gRPCMdtDialoutGrpc.gRPCMdtDialoutStub stub = gRPCMdtDialoutGrpc.newStub(grpcServerRule.getChannel());
 
         CountDownLatch latch = new CountDownLatch(1);

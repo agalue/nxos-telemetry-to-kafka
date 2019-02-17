@@ -18,6 +18,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.MetricRegistry;
+
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
@@ -40,6 +43,9 @@ public class Grpc2Kafka {
     /** The Constant DEFAULT_KAFKA_TOPIC. */
     public static final String DEFAULT_KAFKA_TOPIC = "OpenNMS.Sink.Telemetry-NXOS";
 
+    /** The Metrics Registry. */
+    private static final MetricRegistry metrics = new MetricRegistry();
+
     /**
      * The main method.
      *
@@ -54,6 +60,7 @@ public class Grpc2Kafka {
                 .addOption("t", "topic", true, "Kafka destination topic name.\nDefault: " + DEFAULT_KAFKA_TOPIC)
                 .addOption("m", "minion-id", true, "OpenNMS Minion ID.")
                 .addOption("l", "minion-location", true, "OpenNMS Minion Location.")
+                .addOption("e", "producer-param", true, "Kafka Producer Parameters as key-value pairs.\nFor example: -e max.request.size=5000000")
                 .addOption("d", "debug", false, "Show message on logs.")
                 .addOption("h", "help", false, "Show this help.");
 
@@ -87,16 +94,30 @@ public class Grpc2Kafka {
         String kafkaServers = cli.hasOption('b') ? cli.getOptionValue('b') : DEFAULT_KAFKA_BOOTSTRAP;
         String kafkaTopic = cli.hasOption('t') ? cli.getOptionValue('t') : DEFAULT_KAFKA_TOPIC;
         Integer serverPort = cli.hasOption('p') ? new Integer(cli.getOptionValue('p')) : DEFAULT_GRPC_PORT;
+        Properties producerProperties = new Properties();
+        if (cli.hasOption('o')) {
+            for (String option : cli.getOptionValues('o')) {
+                String[] pair = option.split("=");
+                producerProperties.setProperty(pair[0], pair[1]);
+            }
+        }
 
-        KafkaProducer<String, byte[]> producer = buildProducer(kafkaServers);
+        KafkaProducer<String, byte[]> producer = buildProducer(kafkaServers, producerProperties);
         Server server = buildServer(serverPort, producer, kafkaTopic, cli.getOptionValue('m'), cli.getOptionValue('l'), cli.hasOption('d'));
         server.start();
 
+        final ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .build();
+        reporter.start(1, TimeUnit.MINUTES);
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOG.info("Received shutdown request...");
+            reporter.close();
             producer.close(10, TimeUnit.SECONDS);
             server.shutdown();
-            System.out.println("Successfully stopped the server.");
+            System.out.println("Successfully stopped the gRPC server.");
         }));
 
         server.awaitTermination();
@@ -118,14 +139,13 @@ public class Grpc2Kafka {
      * @param kafkaServers the Kafka servers bootstrap string
      * @return the Kafka producer
      */
-    public static KafkaProducer<String, byte[]> buildProducer(final String kafkaServers) {
-        Properties producerConfig = new Properties();
+    public static KafkaProducer<String, byte[]> buildProducer(final String kafkaServers, final Properties producerProperties) {
+        Properties producerConfig = new Properties(producerProperties);
         producerConfig.setProperty("bootstrap.servers", kafkaServers);
         producerConfig.setProperty("key.serializer", StringSerializer.class.getName());
         producerConfig.setProperty("value.serializer", ByteArraySerializer.class.getName());
         producerConfig.setProperty("acks", "1");
         producerConfig.setProperty("retries", "3");
-
         LOG.info("Connecting to Kafka cluster using {}...", kafkaServers);
         return new KafkaProducer<String, byte[]>(producerConfig);
     }
@@ -150,7 +170,7 @@ public class Grpc2Kafka {
             LOG.warn("Cannot get host address because: ", e.getMessage());
         }
         return ServerBuilder.forPort(serverPort)
-                .addService(new NxosMdtDialoutService(producer, kafkaTopic, minionId, minionLocation, ipAddress, serverPort, debug))
+                .addService(new NxosMdtDialoutService(metrics, producer, kafkaTopic, minionId, minionLocation, ipAddress, serverPort, debug))
                 .build();
     }
 

@@ -139,6 +139,9 @@ usage: grpc2kafka
  -b,--bootstrap-servers <arg>   Kafka bootstrap server list.
                                 Default: 127.0.0.1:9092
  -d,--debug                     Show message on logs.
+ -e,--producer-param <arg>      Kafka Producer Parameters as key-value
+                                pairs.
+                                For example: -e max.request.size=5000000
  -h,--help                      Show this help.
  -l,--minion-location <arg>     OpenNMS Minion Location.
  -m,--minion-id <arg>           OpenNMS Minion ID.

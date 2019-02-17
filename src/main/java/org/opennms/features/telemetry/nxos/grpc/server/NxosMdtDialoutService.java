@@ -1,11 +1,9 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.opennms.netmgt.telemetry.ipc.TelemetryProtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +15,8 @@ import io.grpc.stub.StreamObserver;
 import com.cisco.nxos.telemetry.MdtDialoutArgs;
 import com.cisco.nxos.telemetry.Telemetry;
 import com.cisco.nxos.telemetry.gRPCMdtDialoutGrpc;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 
 /**
  * The Class NxosMdtDialoutService.
@@ -47,11 +47,21 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
     private int listenerPort;
 
     /** The GPB debug flag. */
-    private boolean gpbDebug = false;
+    private boolean gpbDebug;
+
+    /** The Metrics Registry. */
+    private final MetricRegistry metrics;
+
+    /** The Meter for tracking the amount of forwarded messages. */
+    private final Meter messagesForwarded;
+
+    /** The Meter for tracking the amount of errors. */
+    private final Meter errors;
 
     /**
      * Instantiates a new NX-OS Telemetry mdt-dialout service.
      *
+     * @param metrics the Metrics Registry
      * @param kafkaProducer the Kafka producer
      * @param kafkaTopic the Kafka topic
      * @param minionId the OpenNMS Minion id
@@ -60,7 +70,8 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
      * @param listenerPort the listener port
      * @param gpbDebug the GBP debug flag
      */
-    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, String minionId, String minionLocation, String minionAddress, int listenerPort, boolean gpbDebug) {
+    public NxosMdtDialoutService(MetricRegistry metrics, Producer<String, byte[]> kafkaProducer, String kafkaTopic, String minionId, String minionLocation, String minionAddress, int listenerPort, boolean gpbDebug) {
+        this.metrics = metrics;
         this.kafkaProducer = kafkaProducer;
         this.kafkaTopic = kafkaTopic;
         this.minionId = minionId;
@@ -68,6 +79,8 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
         this.minionAddress = minionAddress;
         this.listenerPort = listenerPort;
         this.gpbDebug = gpbDebug;
+        messagesForwarded = metrics.meter("forwarded");
+        errors = metrics.meter("errors");
     }
 
     /* (non-Javadoc)
@@ -86,6 +99,7 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
             @Override
             public void onError(Throwable t) {
                 t.printStackTrace();
+                errors.mark();
                 responseObserver.onCompleted();
             }
 
@@ -130,16 +144,16 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
                 .addMessage(message)
                 .build();
         final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, log.toByteArray());
-        try {
-            LOG.info("Sending message to Kafka topic {}", kafkaTopic);
-            final Future<RecordMetadata> future = kafkaProducer.send(record);
-            future.get();
-            LOG.info("Message has been sent to Kafka topic {}", kafkaTopic);
-        } catch (InterruptedException e) {
-            LOG.warn("Interrupted while sending message to topic {}.", kafkaTopic, e);
-        } catch (ExecutionException e) {
-            LOG.error("Error occurred while sending message to topic {}.", kafkaTopic, e);
-        }
+        LOG.info("Sending message to Kafka topic {}", kafkaTopic);
+        kafkaProducer.send(record, (metadata, exception) -> {
+            if (exception == null) {
+                LOG.info("Message has been sent to Kafka topic {}", kafkaTopic);
+                messagesForwarded.mark();
+            } else {
+                errors.mark();
+                LOG.error("Error writing to topic {} while sending a message of size {}: {}", kafkaTopic, data.size(), exception);
+            }
+        });
     }
 
 }
