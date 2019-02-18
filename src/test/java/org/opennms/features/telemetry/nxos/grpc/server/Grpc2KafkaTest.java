@@ -51,7 +51,7 @@ public class Grpc2KafkaTest {
         final MetricRegistry metrics = new MetricRegistry();
 
         MockProducer<String, byte[]> mockProducer = new MockProducer<>(true, new StringSerializer(), new ByteArraySerializer());
-        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(metrics, mockProducer, "test-topic", "0000", "JUnit", "127.0.0.1", Grpc2Kafka.DEFAULT_GRPC_PORT, true));
+        grpcServerRule.getServiceRegistry().addService(new NxosMdtDialoutService(metrics, mockProducer, "test-topic", "0000", "JUnit", "127.0.0.1", 50001, true));
         gRPCMdtDialoutGrpc.gRPCMdtDialoutStub stub = gRPCMdtDialoutGrpc.newStub(grpcServerRule.getChannel());
 
         CountDownLatch latch = new CountDownLatch(1);
