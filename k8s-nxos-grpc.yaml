@@ -33,6 +33,10 @@ spec:
             value: '50001'
           - name: TOPIC
             value: OpenNMS.Sink.Telemetry-NXOS
+          - name: KAFKA_MAX_REQUEST_SIZE
+            value: '5000000'
+          - name: KAFKA_MAX_PARTITION_FETCH_BYTES
+            value: '5000000'
         ports:
         - containerPort: 50002
           name: nxos-grpc
