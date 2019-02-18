@@ -114,41 +114,54 @@ This helper class was designed on such way that it simplify the life of the deve
 
 # Requirements
 
-* Oracle JDK 8
+* Oracle JDK 11
 * Maven 3
+
+> This can be compiled and run with Java 8, but the `pom.xml` and the `Dockerfile` would require changes.
 
 # Compilation
 
-```SHELL
+```shell
 mvn install
 ```
 
 The generated JAR with dependencies (onejar) contains everything needed to execute the application.
 
+Compilation can also be done with Docker:
+
+```shell
+docker build -t agalue/opennms-nxos-grpc:1.0.0-SNAPSHOT -f Dockerfile.build .
+```
+
 # Usage
 
-```SHELL
-$ java -jar grpc2kafka-1.0.0-SNAPSHOT-onejar.jar
+```shell
+$ java -jar grpc2kafka-1.0.0-SNAPSHOT-jar-with-dependencies.jar
 ```
 
 For more details:
 
-```SHELL
-$ java -jar grpc2kafka-1.0.0-SNAPSHOT-onejar.jar -h
-usage: grpc2kafka
- -b,--bootstrap-servers <arg>   Kafka bootstrap server list.
-                                Default: 127.0.0.1:9092
- -d,--debug                     Show message on logs.
- -e,--producer-param <arg>      Kafka Producer Parameters as key-value
-                                pairs.
-                                For example: -e max.request.size=5000000
- -h,--help                      Show this help.
- -l,--minion-location <arg>     OpenNMS Minion Location.
- -m,--minion-id <arg>           OpenNMS Minion ID.
- -p,--port <arg>                gRPC server listener port.
-                                Default: 50051
- -t,--topic <arg>               Kafka destination topic name.
-                                Default: OpenNMS.Sink.Telemetry-NXOS
+```shell
+$ java -jar grpc2kafka-1.0.0-SNAPSHOT-jar-with-dependencies.jar -h
+Usage: grpc2kafka [-dhV] -b=server -l=location -m=id [-p=port] [-t=topic]
+                  [-e=param[,param...]]...
+  -b, --bootstrap-servers=server
+                       Kafka bootstrap server list.
+                       Example: kafka1:9092
+  -d, --debug          Show message on logs
+  -e, --producer-param=param[,param...]
+                       Optional Kafka Producer parameters as comma separated list of
+                         key-value pairs.
+                       Example: -e max.request.size=5000000,acks=1
+  -h, --help           Show this help message and exit.
+  -l, --minion-location=location
+                       OpenNMS Minion Loaction
+  -m, --minion-id=id   OpenNMS Minion ID
+  -p, --port=port      gRPC server listener port.
+                       Default: 50051
+  -t, --topic=topic    Kafka destination topic name.
+                       Default: OpenNMS.Sink.Telemetry-NXOS
+  -V, --version        Print version information and exit.
 ```
 
 It is recommended to run this application on the same machine where the OpenNMS Minion is running, and make sure to provide the appropriate settings. It is important that the Minion is using Kafka for the Sink pattern in order to have this solution working.
