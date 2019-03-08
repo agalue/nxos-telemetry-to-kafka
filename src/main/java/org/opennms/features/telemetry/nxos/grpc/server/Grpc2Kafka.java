@@ -44,6 +44,7 @@ public class Grpc2Kafka {
                 .addOption("p", "port", true, "gRPC server listener port.\nDefault: " + DEFAULT_GRPC_PORT)
                 .addOption("b", "bootstrap-servers", true, "Kafka bootstrap server list.\nDefault: " + DEFAULT_KAFKA_BOOTSTRAP)
                 .addOption("t", "topic", true, "Kafka destination topic name.\nDefault: " + DEFAULT_KAFKA_TOPIC)
+                .addOption("j", "json", false, "Convert GPB payload to JSON prior send it to Kafka.")
                 .addOption("d", "debug", false, "Show message on logs.")
                 .addOption("h", "help", false, "Show this help.");
 
@@ -65,9 +66,11 @@ public class Grpc2Kafka {
         String kafkaServers = cli.hasOption('b') ? cli.getOptionValue('b') : DEFAULT_KAFKA_BOOTSTRAP;
         String kafkaTopic = cli.hasOption('t') ? cli.getOptionValue('t') : DEFAULT_KAFKA_TOPIC;
         Integer serverPort = cli.hasOption('p') ? new Integer(cli.getOptionValue('p')) : DEFAULT_GRPC_PORT;
+        boolean debug = cli.hasOption('d');
+        boolean toJson = cli.hasOption('j');
 
         KafkaProducer<String, byte[]> producer = buildProducer(kafkaServers);
-        Server server = buildServer(serverPort, producer, kafkaTopic, cli.hasOption('d'));
+        Server server = buildServer(serverPort, producer, kafkaTopic, debug, toJson);
         server.start();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -115,12 +118,13 @@ public class Grpc2Kafka {
      * @param producer the Kafka producer
      * @param kafkaTopic the Kafka topic
      * @param debug the debug flag
+     * @param toJson the convert to JSON flag
      * @return the gRPC server
      */
-    public static Server buildServer(final int serverPort, final KafkaProducer<String, byte[]> producer, final String kafkaTopic, final boolean debug) {
+    public static Server buildServer(final int serverPort, final KafkaProducer<String, byte[]> producer, final String kafkaTopic, final boolean debug, final boolean toJson) {
         LOG.info("Starting NX-OS gRPC server without TLS on port {}...", serverPort);
         return ServerBuilder.forPort(serverPort)
-                .addService(new NxosMdtDialoutService(producer, kafkaTopic, debug))
+                .addService(new NxosMdtDialoutService(producer, kafkaTopic, debug, toJson))
                 .build();
     }
 
