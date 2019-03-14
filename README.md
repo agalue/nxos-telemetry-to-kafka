@@ -72,12 +72,14 @@ $ java -jar grpc2kafka-1.0.0-SNAPSHOT-onejar.jar
 For more details:
 
 ```SHELL
-$ java -jar grpc2kafka-1.0.0-SNAPSHOT-onejar.jar -h
+$ java -jar grpc2kafka-1.0.0-SNAPSHOT-jar-with-dependencies.jar --help
 usage: grpc2kafka
  -b,--bootstrap-servers <arg>   Kafka bootstrap server list.
                                 Default: 127.0.0.1:9092
  -d,--debug                     Show message on logs.
  -h,--help                      Show this help.
+ -j,--json                      Convert GPB payload to JSON prior send it
+                                to Kafka.
  -p,--port <arg>                gRPC server listener port.
                                 Default: 50051
  -t,--topic <arg>               Kafka destination topic name.
