@@ -2,6 +2,7 @@ package org.opennms.features.telemetry.nxos.grpc.server;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import io.grpc.stub.StreamObserver;
 import mdt_dialout.MdtDialout.MdtDialoutArgs;
 import mdt_dialout.gRPCMdtDialoutGrpc;
@@ -35,17 +36,22 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
     /** The GPB debug flag. */
     private boolean gpbDebug = false;
 
+    /** The JSON conversion flag. */
+    private boolean toJson = false;
+
     /**
      * Instantiates a new NX-OS Telemetry mdt-dialout service.
      *
      * @param kafkaProducer the Kafka producer
      * @param kafkaTopic the Kafka topic
      * @param gpbDebug the GPB debug flag
+     * @param toJson the convert to JSON flag
      */
-    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, boolean gpbDebug) {
+    public NxosMdtDialoutService(Producer<String, byte[]> kafkaProducer, String kafkaTopic, boolean gpbDebug, boolean toJson) {
         this.kafkaProducer = kafkaProducer;
         this.kafkaTopic = kafkaTopic;
         this.gpbDebug = gpbDebug;
+        this.toJson = toJson;
     }
 
     /* (non-Javadoc)
@@ -96,7 +102,19 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
      * @param data the data in bytes
      */
     private void sendMessageToKafka(ByteString data) {
-        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, data.toByteArray());
+        byte[] array = null;
+        if (toJson) {
+            try {
+                Telemetry telemetry = Telemetry.parseFrom(data);
+                array = JsonFormat.printer().print(telemetry).getBytes();
+            } catch (InvalidProtocolBufferException e) {
+                LOG.error("Cannot parse payload as GPB. Content: {}", data);
+                return;
+            }
+        } else {
+            array = data.toByteArray();
+        }
+        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, array);
         try {
             LOG.info("Sending message to Kafka topic {}", kafkaTopic);
             final Future<RecordMetadata> future = kafkaProducer.send(record);
