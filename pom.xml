@@ -19,7 +19,7 @@
     </developers>
     <properties>
         <protocVersion>3.6.1</protocVersion>
-        <grpcVersion>1.18.0</grpcVersion>
+        <grpcVersion>1.21.0</grpcVersion>
         <kafkaVersion>2.1.1</kafkaVersion>
     </properties>
     <build>
