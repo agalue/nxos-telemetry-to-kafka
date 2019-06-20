@@ -1,10 +1,13 @@
 package org.opennms.features.telemetry.nxos.grpc.server;
 
-import java.util.concurrent.ExecutionException;
+import java.util.UUID;
 
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+
 import org.opennms.netmgt.telemetry.ipc.TelemetryProtos;
+import org.opennms.core.ipc.sink.model.SinkMessageProtos;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +131,7 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
 
     /**
      * Send message to Kafka.
+     * Inspired by <a href="https://github.com/OpenNMS/opennms/blob/develop/features/telemetry/common/src/main/java/org/opennms/netmgt/telemetry/common/ipc/TelemetrySinkModule.java">TelemetrySinkModule</a>
      *
      * @param data the data in bytes
      */
@@ -136,6 +140,7 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
                 .setBytes(data)
                 .setTimestamp(System.currentTimeMillis())
                 .build();
+
         TelemetryProtos.TelemetryMessageLog log = TelemetryProtos.TelemetryMessageLog.newBuilder()
                 .setSystemId(minionId)
                 .setLocation(minionLocation)
@@ -143,7 +148,14 @@ public class NxosMdtDialoutService extends gRPCMdtDialoutGrpc.gRPCMdtDialoutImpl
                 .setSourcePort(listenerPort)
                 .addMessage(message)
                 .build();
-        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, log.toByteArray());
+
+        SinkMessageProtos.SinkMessage sink = SinkMessageProtos.SinkMessage.newBuilder()
+                .setMessageId(UUID.randomUUID().toString())
+                .setContent(ByteString.copyFrom(log.toByteArray()))
+                .build();
+
+        final ProducerRecord<String, byte[]> record = new ProducerRecord<>(kafkaTopic, sink.toByteArray());
+
         LOG.info("Sending message to Kafka topic {}", kafkaTopic);
         kafkaProducer.send(record, (metadata, exception) -> {
             if (exception == null) {

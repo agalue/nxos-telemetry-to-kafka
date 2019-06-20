@@ -74,6 +74,10 @@ Check the [official docs](http://docs.opennms.org/opennms/releases/22.0.0/guide-
 
 This project can serve as a reference in order to formally implement the Listener interface which is part of the OpenNMS Telemetry API (see the content of the opennms directory), but handling the dependencies to have gRPC working smoothly within OpenNMS or a Minion is not easy.
 
+## Horion 24
+
+Starting with Horizon 24, all the messages sent through the Sink API has to be wrapped within a GBP message defined in `sink-message.proto`. Current implementation uses this behavior.
+
 # Integration Challenges
 
 Here are some facts that were discovered while trying to run gRPC within an Karaf (the OSGi container embedded in OpenNMS).

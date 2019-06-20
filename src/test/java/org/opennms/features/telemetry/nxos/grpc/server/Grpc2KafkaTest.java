@@ -13,6 +13,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.opennms.core.ipc.sink.model.SinkMessageProtos;
 import org.opennms.netmgt.telemetry.ipc.TelemetryProtos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +95,9 @@ public class Grpc2KafkaTest {
 
         Assert.assertEquals(1, mockProducer.history().size());
         ProducerRecord<String, byte[]> record = mockProducer.history().get(0);
-        TelemetryProtos.TelemetryMessageLog log = TelemetryProtos.TelemetryMessageLog.parseFrom(record.value());
+
+        SinkMessageProtos.SinkMessage sink = SinkMessageProtos.SinkMessage.parseFrom(record.value());
+        TelemetryProtos.TelemetryMessageLog log = TelemetryProtos.TelemetryMessageLog.parseFrom(sink.getContent());
         Telemetry kafkaPayload = Telemetry.parseFrom(log.getMessage(0).getBytes());
         Assert.assertEquals("agalue", kafkaPayload.getDataGpbkv(0).getStringValue());
     }
