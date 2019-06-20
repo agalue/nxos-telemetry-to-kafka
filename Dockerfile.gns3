@@ -1,0 +1,8 @@
+FROM ubuntu:18.04
+ENV VERSION 1.0.0-SNAPSHOT
+WORKDIR /app
+RUN apt-get update -y && apt-get install openjdk-11-jre -y
+COPY ./target/grpc2kafka-${VERSION}-jar-with-dependencies.jar grpc2kafka.jar
+COPY ./docker-entrypoint.sh .
+LABEL maintainer="Alejandro Galue <agalue@opennms.org>" name="NX-OS gRPC to Kafka" version="${VERSION}"
+ENTRYPOINT [ "/app/docker-entrypoint.sh" ]
