@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: minion # To emulate minions, perhaps this can be deployed with Minions as a second container
-        image: agalue/opennms-nxos-grpc:latest
+        image: agalue/opennms-nxos-grpc:horizon-24
         env:
           - name: BOOTSTRAP_SERVERS
             value: kafka.opennms.svc.cluster.local:9092

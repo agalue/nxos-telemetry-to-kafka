@@ -3,7 +3,6 @@ package org.opennms.features.telemetry.nxos.grpc.server;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +51,9 @@ public class Grpc2Kafka implements Runnable {
     @Option(names={"-e","--producer-param"}, paramLabel="param", split=",", description="Optional Kafka Producer parameters as comma separated list of key-value pairs.\nExample: -e max.request.size=5000000,acks=1")
     List<String> producerParameters;
 
+    @Option(names={"-M","--max-buffer-size"}, paramLabel="size", description="The maximum size in bytes of the message buffer chunk, used to split big messages into multiple ones and sent them to the same partition in Kafka.\nDefault: ${DEFAULT-VALUE} (disabled)", defaultValue="0")
+    Integer maxBufferSize;
+
     @Option(names={"-d","--debug"}, description="Show message on logs")
     boolean debug;
 
@@ -82,7 +84,7 @@ public class Grpc2Kafka implements Runnable {
             }
 
             KafkaProducer<String, byte[]> producer = buildProducer(kafkaServers, producerProperties);
-            Server server = buildServer(serverPort, producer, kafkaTopic, minionId, minionLocation, debug);
+            Server server = buildServer(producer);
             server.start();
 
             final ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics)
@@ -126,15 +128,10 @@ public class Grpc2Kafka implements Runnable {
     /**
      * Builds the gRPC server.
      *
-     * @param serverPort the server port
      * @param producer the Kafka producer
-     * @param kafkaTopic the Kafka topic
-     * @param minionId the OpenNMS Minion id
-     * @param minionLocation the OpenNMS Minion location
-     * @param debug the debug flag
      * @return the gRPC server
      */
-    public Server buildServer(final int serverPort, final KafkaProducer<String, byte[]> producer, final String kafkaTopic, final String minionId, final String minionLocation, final boolean debug) {
+    public Server buildServer(final KafkaProducer<String, byte[]> producer) {
         LOG.info("Starting NX-OS gRPC server without TLS on port {}...", serverPort);
         String ipAddress = "127.0.0.1";
         try {
@@ -143,7 +140,7 @@ public class Grpc2Kafka implements Runnable {
             LOG.warn("Cannot get host address because: ", e.getMessage());
         }
         return ServerBuilder.forPort(serverPort)
-                .addService(new NxosMdtDialoutService(metrics, producer, kafkaTopic, minionId, minionLocation, ipAddress, serverPort, debug))
+                .addService(new NxosMdtDialoutService(metrics, producer, kafkaTopic, minionId, minionLocation, ipAddress, serverPort, maxBufferSize, debug))
                 .build();
     }
 

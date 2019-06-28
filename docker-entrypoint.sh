@@ -22,4 +22,4 @@ do
   fi
 done
 
-exec java ${JAVA_OPTS} -jar grpc2kafka.jar -b ${BOOTSTRAP_SERVERS} -l ${MINION_LOCATION} -m ${MINION_ID} -p ${PORT-50051} -t ${TOPIC-OpenNMS.Sink.Telemetry-NXOS} -e $(join , ${OPTIONS[@]})
+exec java ${JAVA_OPTS} -jar grpc2kafka.jar -b ${BOOTSTRAP_SERVERS} -l ${MINION_LOCATION} -m ${MINION_ID} -p ${PORT-50051} -M ${MESSAGE_BUFFER_SIZE-0} -t ${TOPIC-OpenNMS.Sink.Telemetry-NXOS} -e $(join , ${OPTIONS[@]})

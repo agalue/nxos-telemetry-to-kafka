@@ -147,8 +147,8 @@ For more details:
 
 ```shell
 $ java -jar grpc2kafka-1.0.0-SNAPSHOT-jar-with-dependencies.jar -h
-Usage: grpc2kafka [-dhV] -b=server -l=location -m=id [-p=port] [-t=topic]
-                  [-e=param[,param...]]...
+Usage: grpc2kafka [-dhV] -b=server -l=location -m=id [-M=size] [-p=port]
+                  [-t=topic] [-e=param[,param...]]...
   -b, --bootstrap-servers=server
                        Kafka bootstrap server list.
                        Example: kafka1:9092
@@ -161,6 +161,11 @@ Usage: grpc2kafka [-dhV] -b=server -l=location -m=id [-p=port] [-t=topic]
   -l, --minion-location=location
                        OpenNMS Minion Loaction
   -m, --minion-id=id   OpenNMS Minion ID
+  -M, --max-buffer-size=size
+                       The maximum size in bytes of the message buffer chunk, used
+                         to split big messages into multiple ones and sent them to
+                         the same partition in Kafka.
+                       Default: 0 (disabled)
   -p, --port=port      gRPC server listener port.
                        Default: 50051
   -t, --topic=topic    Kafka destination topic name.
